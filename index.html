@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SnapWall Pro — Social Photo Gallery</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Poppins', sans-serif; }
+    .gradient-bg {
+      background: linear-gradient(135deg, #FF6B6B 0%, #FFE66D 50%, #4ECDC4 100%);
+    }
+    .comment-scroll::-webkit-scrollbar { width: 4px; }
+    .comment-scroll::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+    @keyframes pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+    .animate-pop { animation: pop 0.25s ease-out; }
+  </style>
+</head>
+<body class="min-h-screen gradient-bg text-gray-800 dark:text-gray-100 transition-colors duration-200">
+
+  <!-- ==================== 1. AUTH / LOGIN LANDING PAGE ==================== -->
+  <div id="auth-page" class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white/95 w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-3 border border-white text-gray-800">
+      
+      <!-- SECTION 1: GUEST LOGIN -->
+      <div class="p-8 bg-gradient-to-br from-amber-400 to-orange-500 text-white flex flex-col justify-between">
+        <div>
+          <span class="inline-block px-3 py-1 bg-white/20 rounded-full text-xs font-semibold tracking-wider uppercase mb-4">
+            Quick Access
+          </span>
+          <h2 class="text-2xl font-bold mb-2">Browse as Guest</h2>
+          <p class="text-white/90 text-sm leading-relaxed">
+            Jump straight into the live gallery to explore photos, filter by categories, and download images.
+          </p>
+        </div>
+        <div class="mt-8">
+          <p class="text-xs text-white/80 mb-3">* Account required to post, like, or comment.</p>
+          <button type="button" onclick="enterAsGuest()" class="w-full py-3 px-4 bg-white text-orange-600 font-bold rounded-xl shadow-md hover:bg-orange-50 transition">
+            Enter Gallery →
+          </button>
+        </div>
+      </div>
+
+      <!-- SECTION 2: USER LOGIN -->
+      <div class="p-8 bg-white flex flex-col justify-between border-b md:border-b-0 md:border-r border-gray-100">
+        <div>
+          <span class="inline-block px-3 py-1 bg-indigo-100 text-indigo-600 rounded-full text-xs font-semibold tracking-wider uppercase mb-4">
+            Welcome Back
+          </span>
+          <h2 class="text-2xl font-bold text-gray-800 mb-4">Login</h2>
+          <form id="login-form" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Email</label>
+              <input type="email" id="login-email" required placeholder="you@example.com"
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Password</label>
+              <input type="password" id="login-password" required placeholder="••••••••"
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm" />
+            </div>
+            <button type="submit" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-md transition">
+              Sign In
+            </button>
+          </form>
+        </div>
+        <p id="login-msg" class="text-xs text-red-500 mt-3 min-h-[16px]"></p>
+      </div>
+
+      <!-- SECTION 3: CREATE ACCOUNT (WITH CUSTOM NAME & AVATAR COLOR) -->
+      <div class="p-8 bg-gradient-to-br from-teal-50 to-emerald-50 flex flex-col justify-between">
+        <div>
+          <span class="inline-block px-3 py-1 bg-teal-100 text-teal-700 rounded-full text-xs font-semibold tracking-wider uppercase mb-4">
+            New Here?
+          </span>
+          <h2 class="text-2xl font-bold text-gray-800 mb-3">Create Account</h2>
+          <form id="signup-form" class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Display Name</label>
+              <input type="text" id="signup-name" required maxlength="20" placeholder="e.g. Waibhav"
+                class="w-full px-3.5 py-2 rounded-xl bg-white border border-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Avatar Color</label>
+              <div class="flex items-center gap-2" id="color-picker">
+                <button type="button" data-color="#ec4899" class="color-opt w-7 h-7 rounded-full bg-pink-500 ring-2 ring-offset-2 ring-gray-800"></button>
+                <button type="button" data-color="#6366f1" class="color-opt w-7 h-7 rounded-full bg-indigo-500"></button>
+                <button type="button" data-color="#14b8a6" class="color-opt w-7 h-7 rounded-full bg-teal-500"></button>
+                <button type="button" data-color="#f59e0b" class="color-opt w-7 h-7 rounded-full bg-amber-500"></button>
+                <button type="button" data-color="#8b5cf6" class="color-opt w-7 h-7 rounded-full bg-violet-500"></button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Email</label>
+              <input type="email" id="signup-email" required placeholder="new@example.com"
+                class="w-full px-3.5 py-2 rounded-xl bg-white border border-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Password</label>
+              <input type="password" id="signup-password" required minlength="6" placeholder="Min 6 characters"
+                class="w-full px-3.5 py-2 rounded-xl bg-white border border-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400 text-sm" />
+            </div>
+            <button type="submit" class="w-full py-2.5 px-4 bg-teal-500 hover:bg-teal-600 text-white font-semibold rounded-xl shadow-md transition">
+              Sign Up
+            </button>
+          </form>
+        </div>
+        <p id="signup-msg" class="text-xs text-teal-700 mt-2 min-h-[16px]"></p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== 2. PHOTO GALLERY PAGE ==================== -->
+  <div id="gallery-page" class="hidden min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
+    
+    <!-- Top Navigation Bar -->
+    <nav class="sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-4 sm:px-6 py-3 shadow-sm">
+      <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+        <!-- Brand -->
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl gradient-bg flex items-center justify-center text-white font-bold text-lg shadow-sm">
+            S
+          </div>
+          <span class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 via-orange-500 to-teal-500">
+            SnapWall
+          </span>
+          <span class="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live
+          </span>
+        </div>
+
+        <!-- Right Controls -->
+        <div class="flex items-center gap-2.5">
+          <!-- My Uploads Toggle (Logged-in only) -->
+          <button type="button" id="my-uploads-btn" onclick="toggleMyUploads()" class="hidden px-3 py-1.5 rounded-xl text-xs font-semibold border border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-700 transition">
+            📁 My Uploads
+          </button>
+
+          <!-- Dark Mode Toggle -->
+          <button type="button" onclick="toggleDarkMode()" id="dark-toggle" title="Toggle Dark Mode"
+            class="w-9 h-9 rounded-xl bg-gray-100 dark:bg-slate-700 flex items-center justify-center text-base hover:opacity-80 transition">
+            🌙
+          </button>
+
+          <!-- User Badge -->
+          <div id="user-badge" class="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-100 dark:bg-slate-700">
+            👀 Guest
+          </div>
+
+          <!-- Auth Button -->
+          <button type="button" id="auth-action-btn" onclick="handleLogout()" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-500 hover:bg-rose-600 text-white transition">
+            Logout
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="max-w-6xl mx-auto p-4 sm:p-6">
+
+      <!-- UPLOAD STUDIO (Logged-In Only, with Image Filter & Category Tag) -->
+      <div id="upload-section" class="hidden mb-6 bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700">
+        <h3 class="text-base font-bold mb-3 flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-teal-400"></span> Share a New Photo
+        </h3>
+        <form id="upload-form" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <input type="file" id="photo-file" accept="image/*" required onchange="previewUploadImage(event)"
+              class="text-xs text-gray-500 dark:text-gray-300 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-600 dark:file:bg-indigo-900/50 dark:file:text-indigo-300 cursor-pointer" />
+            
+            <input type="text" id="photo-caption" placeholder="Write a fun caption..." required
+              class="px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-pink-400 text-sm" />
+
+            <select id="photo-category" class="px-3.5 py-2 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400">
+              <option value="General">🏷️ #General</option>
+              <option value="Nature">🌿 #Nature</option>
+              <option value="Campus">🎓 #Campus</option>
+              <option value="Memes">😂 #Memes</option>
+              <option value="Travel">✈️ #Travel</option>
+              <option value="Tech">💻 #Tech</option>
+            </select>
+          </div>
+
+          <!-- Live Preview & Filter Bar (Shown after selecting a file) -->
+          <div id="filter-studio" class="hidden flex flex-col sm:flex-row items-center gap-4 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-gray-100 dark:border-slate-700">
+            <img id="upload-preview" src="" alt="Preview" class="w-24 h-24 object-cover rounded-xl shadow-sm" />
+            <div class="flex-1">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Choose Photo Filter:</p>
+              <div class="flex flex-wrap gap-2" id="filter-buttons">
+                <button type="button" onclick="setFilter('none', this)" class="filter-btn px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600 text-white">Normal</button>
+                <button type="button" onclick="setFilter('grayscale(100%) contrast(115%)', this)" class="filter-btn px-3 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600">B&W</button>
+                <button type="button" onclick="setFilter('sepia(45%) contrast(105%) brightness(105%)', this)" class="filter-btn px-3 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600">Vintage</button>
+                <button type="button" onclick="setFilter('saturate(150%) contrast(108%)', this)" class="filter-btn px-3 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600">Vibrant</button>
+                <button type="button" onclick="setFilter('sepia(25%) saturate(130%) hue-rotate(-10deg)', this)" class="filter-btn px-3 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600">Warm</button>
+              </div>
+            </div>
+            <button type="submit" id="upload-btn"
+              class="w-full sm:w-auto px-6 py-2.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-pink-500 to-orange-500 hover:opacity-95 shadow-sm transition">
+              Post Photo
+            </button>
+          </div>
+        </form>
+        <p id="upload-status" class="text-xs text-teal-600 dark:text-teal-400 mt-2"></p>
+      </div>
+
+      <!-- Guest Banner -->
+      <div id="guest-banner" class="hidden mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/40 border border-amber-200 dark:border-amber-700 flex flex-wrap items-center justify-between gap-4">
+        <p class="text-sm text-amber-900 dark:text-amber-200 font-medium">
+          👋 Browsing as <strong>Guest</strong>. Log in to upload photos with filters, like, and comment!
+        </p>
+        <button type="button" onclick="showAuthPage()" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl shadow-sm">
+          Login / Sign Up
+        </button>
+      </div>
+
+      <!-- DISCOVERY BAR: Search, Sort & Category Pills -->
+      <div class="mb-6 space-y-3">
+        <div class="flex flex-col md:flex-row gap-3">
+          <!-- Real-Time Search -->
+          <div class="relative flex-1">
+            <input type="text" id="search-input" oninput="handleFilterChange()" placeholder="🔍 Search by caption or creator name..."
+              class="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+
+          <!-- Sort Tabs -->
+          <div class="flex bg-white dark:bg-slate-800 p-1 rounded-xl border border-gray-200 dark:border-slate-700 text-xs font-semibold">
+            <button type="button" onclick="setSort('newest', this)" class="sort-btn flex-1 md:flex-none px-3.5 py-1.5 rounded-lg bg-indigo-600 text-white transition">Newest</button>
+            <button type="button" onclick="setSort('likes', this)" class="sort-btn flex-1 md:flex-none px-3.5 py-1.5 rounded-lg text-gray-600 dark:text-gray-300 transition">❤️ Most Liked</button>
+            <button type="button" onclick="setSort('comments', this)" class="sort-btn flex-1 md:flex-none px-3.5 py-1.5 rounded-lg text-gray-600 dark:text-gray-300 transition">💬 Discussed</button>
+          </div>
+        </div>
+
+        <!-- Category Filter Pills -->
+        <div class="flex flex-wrap gap-2" id="category-pills">
+          <button type="button" onclick="setCategory('All', this)" class="cat-btn px-3 py-1 rounded-full text-xs font-semibold bg-gray-800 text-white dark:bg-white dark:text-gray-900">All</button>
+          <button type="button" onclick="setCategory('Nature', this)" class="cat-btn px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">🌿 #Nature</button>
+          <button type="button" onclick="setCategory('Campus', this)" class="cat-btn px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">🎓 #Campus</button>
+          <button type="button" onclick="setCategory('Memes', this)" class="cat-btn px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">😂 #Memes</button>
+          <button type="button" onclick="setCategory('Travel', this)" class="cat-btn px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">✈️ #Travel</button>
+          <button type="button" onclick="setCategory('Tech', this)" class="cat-btn px-3 py-1 rounded-full text-xs font-semibold bg-pink-100 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300">💻 #Tech</button>
+          <button type="button" onclick="setCategory('General', this)" class="cat-btn px-3 py-1 rounded-full text-xs font-semibold bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-gray-300">🏷️ #General</button>
+        </div>
+      </div>
+
+      <!-- Photo Grid -->
+      <div id="photo-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Cards injected dynamically -->
+      </div>
+
+      <!-- Pagination / Load More -->
+      <div id="load-more-container" class="hidden mt-8 text-center">
+        <button type="button" onclick="loadMorePhotos()" class="px-6 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-sm font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition">
+          Load More Photos ↓
+        </button>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ==================== 3. FULL-SCREEN LIGHTBOX WITH DOWNLOAD ==================== -->
+  <div id="lightbox" onclick="closeLightbox()" class="hidden fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4">
+    <!-- Top Action Bar -->
+    <div onclick="event.stopPropagation()" class="absolute top-5 right-5 flex items-center gap-3">
+      <button type="button" id="lightbox-download-btn" onclick="downloadCurrentPhoto()"
+        class="px-4 py-2 rounded-full bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg transition">
+        ⬇️ Download
+      </button>
+      <button type="button" onclick="closeLightbox()" aria-label="Close full screen"
+        class="w-10 h-10 rounded-full bg-white/15 hover:bg-white/30 text-white text-lg font-bold flex items-center justify-center transition">
+        ✕
+      </button>
+    </div>
+
+    <img id="lightbox-img" src="" alt="Full screen preview" onclick="event.stopPropagation()"
+      class="max-h-[80vh] max-w-[92vw] object-contain rounded-xl shadow-2xl select-none" />
+
+    <div onclick="event.stopPropagation()" class="mt-4 text-center max-w-xl px-4">
+      <p id="lightbox-caption" class="text-white font-semibold text-base"></p>
+      <p id="lightbox-author" class="text-gray-400 text-xs mt-1"></p>
+    </div>
+  </div>
+
+  <!-- ==================== JAVASCRIPT & SUPABASE LOGIC ==================== -->
+  <script>
+    // 1. INITIALIZE SUPABASE (Paste your credentials here)
+    const SUPABASE_URL = 'https://ufvbbwgtavbeqrboisjy.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_dRpDrflznr80fglOeT_MDw_J9fAwwr0';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // App State
+    let currentUser = null;
+    let selectedSignupColor = '#ec4899';
+    let selectedFilter = 'none';
+    let photosData = [];
+    let activeCategory = 'All';
+    let activeSort = 'newest';
+    let showOnlyMine = false;
+    let visibleLimit = 12;
+    let activeLightboxPhoto = null;
+    let realtimeChannel = null;
+
+    // Category Badge Colors
+    const CATEGORY_STYLES = {
+      Nature: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
+      Campus: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+      Memes: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
+      Travel: 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
+      Tech: 'bg-pink-100 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300',
+      General: 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-300'
+    };
+
+    // DOM References
+    const authPage = document.getElementById('auth-page');
+    const galleryPage = document.getElementById('gallery-page');
+    const photoGrid = document.getElementById('photo-grid');
+
+    // Initialize Dark Mode from LocalStorage
+    if (localStorage.getItem('snapwall_dark') === 'true') {
+      document.documentElement.classList.add('dark');
+      document.getElementById('dark-toggle').textContent = '☀️';
+    }
+
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('snapwall_dark', isDark);
+      document.getElementById('dark-toggle').textContent = isDark ? '☀️' : '🌙';
+    }
+
+    // Signup Avatar Color Picker
+    document.querySelectorAll('.color-opt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.color-opt').forEach(b => b.classList.remove('ring-2', 'ring-offset-2', 'ring-gray-800'));
+        btn.classList.add('ring-2', 'ring-offset-2', 'ring-gray-800');
+        selectedSignupColor = btn.dataset.color;
+      });
+    });
+
+    // Helper: Get User Display Name & Avatar Color
+    function getUserProfile(user) {
+      if (!user) return { name: 'Guest', color: '#94a3b8' };
+      const meta = user.user_metadata || {};
+      return {
+        name: meta.display_name || user.email.split('@')[0],
+        color: meta.avatar_color || '#6366f1'
+      };
+    }
+
+    // Check Session on Boot
+    async function initApp() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        currentUser = session.user;
+        openGallery(false);
+      }
+    }
+
+    function openGallery(isGuest) {
+      authPage.classList.add('hidden');
+      galleryPage.classList.remove('hidden');
+      showOnlyMine = false;
+
+      const uploadSection = document.getElementById('upload-section');
+      const guestBanner = document.getElementById('guest-banner');
+      const userBadge = document.getElementById('user-badge');
+      const authActionBtn = document.getElementById('auth-action-btn');
+      const myUploadsBtn = document.getElementById('my-uploads-btn');
+
+      if (isGuest || !currentUser) {
+        uploadSection.classList.add('hidden');
+        guestBanner.classList.remove('hidden');
+        myUploadsBtn.classList.add('hidden');
+        userBadge.innerHTML = '👀 Guest Mode';
+        authActionBtn.textContent = 'Login';
+        authActionBtn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition';
+      } else {
+        const profile = getUserProfile(currentUser);
+        uploadSection.classList.remove('hidden');
+        guestBanner.classList.add('hidden');
+        myUploadsBtn.classList.remove('hidden');
+        userBadge.innerHTML = `
+          <span class="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] text-white font-bold" style="background:${profile.color}">
+            ${escapeHTML(profile.name[0].toUpperCase())}
+          </span>
+          <span>${escapeHTML(profile.name)}</span>
+        `;
+        authActionBtn.textContent = 'Logout';
+        authActionBtn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-500 hover:bg-rose-600 text-white transition';
+      }
+
+      loadGalleryData();
+      setupRealtime();
+    }
+
+    function enterAsGuest() {
+      currentUser = null;
+      openGallery(true);
+    }
+
+    function showAuthPage() {
+      galleryPage.classList.add('hidden');
+      authPage.classList.remove('hidden');
+    }
+
+    // Login
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      const msg = document.getElementById('login-msg');
+      msg.textContent = 'Signing in...';
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        msg.textContent = error.message;
+      } else {
+        msg.textContent = '';
+        currentUser = data.user;
+        openGallery(false);
+      }
+    });
+
+    // Signup
+    document.getElementById('signup-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const displayName = document.getElementById('signup-name').value.trim();
+      const email = document.getElementById('signup-email').value;
+      const password = document.getElementById('signup-password').value;
+      const msg = document.getElementById('signup-msg');
+      msg.textContent = 'Creating account...';
+
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            display_name: displayName,
+            avatar_color: selectedSignupColor
+          }
+        }
+      });
+
+      if (error) {
+        msg.className = 'text-xs text-red-500 mt-2';
+        msg.textContent = error.message;
+      } else {
+        msg.className = 'text-xs text-teal-700 mt-2';
+        if (data.session) {
+          currentUser = data.user;
+          openGallery(false);
+        } else {
+          msg.textContent = 'Account created! Check your email or sign in.';
+        }
+      }
+    });
+
+    async function handleLogout() {
+      if (currentUser) {
+        await supabaseClient.auth.signOut();
+        currentUser = null;
+      }
+      showAuthPage();
+    }
+
+    // Image Filter Studio Preview
+    function previewUploadImage(e) {
+      const file = e.target.files[0];
+      const studio = document.getElementById('filter-studio');
+      const preview = document.getElementById('upload-preview');
+      if (!file) {
+        studio.classList.add('hidden');
+        return;
+      }
+      preview.src = URL.createObjectURL(file);
+      selectedFilter = 'none';
+      preview.style.filter = 'none';
+      studio.classList.remove('hidden');
+    }
+
+    function setFilter(filterCss, btn) {
+      selectedFilter = filterCss;
+      document.getElementById('upload-preview').style.filter = filterCss;
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        b.className = 'filter-btn px-3 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600';
+      });
+      btn.className = 'filter-btn px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600 text-white';
+    }
+
+    // Compress & Bake Selected Filter into Image Blob
+    function processAndCompressImage(file, filterCss = 'none', maxWidth = 1200, quality = 0.84) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+          const img = new Image();
+          img.src = event.target.result;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.filter = filterCss;
+            ctx.drawImage(img, 0, 0, width, height);
+
+            canvas.toBlob((blob) => resolve(blob || file), 'image/jpeg', quality);
+          };
+        };
+      });
+    }
+
+    // Upload Photo Handler
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentUser) return alert('Please log in to upload!');
+
+      const fileInput = document.getElementById('photo-file');
+      const captionInput = document.getElementById('photo-caption');
+      const categoryInput = document.getElementById('photo-category');
+      const statusText = document.getElementById('upload-status');
+      const uploadBtn = document.getElementById('upload-btn');
+
+      const rawFile = fileInput.files[0];
+      if (!rawFile) return;
+
+      uploadBtn.disabled = true;
+      statusText.textContent = 'Applying filter, compressing & uploading...';
+
+      const processedBlob = await processAndCompressImage(rawFile, selectedFilter);
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.jpg`;
+
+      const { error: uploadError } = await supabaseClient.storage
+        .from('photos')
+        .upload(fileName, processedBlob, { contentType: 'image/jpeg' });
+
+      if (uploadError) {
+        statusText.textContent = `Upload failed: ${uploadError.message}`;
+        uploadBtn.disabled = false;
+        return;
+      }
+
+      const { data: { publicUrl } } = supabaseClient.storage
+        .from('photos')
+        .getPublicUrl(fileName);
+
+      const profile = getUserProfile(currentUser);
+      const { data: newPhoto, error: dbError } = await supabaseClient
+        .from('photos')
+        .insert([{
+          image_url: publicUrl,
+          caption: captionInput.value.trim(),
+          category: categoryInput.value,
+          user_id: currentUser.id,
+          user_email: currentUser.email,
+          display_name: profile.name,
+          avatar_color: profile.color
+        }])
+        .select()
+        .single();
+
+      if (dbError) {
+        statusText.textContent = `Database error: ${dbError.message}`;
+      } else {
+        statusText.textContent = 'Photo posted!';
+        fileInput.value = '';
+        captionInput.value = '';
+        document.getElementById('filter-studio').classList.add('hidden');
+        if (!photosData.some(p => p.id === newPhoto.id)) {
+          photosData.unshift({ ...newPhoto, likes: [], comments: [] });
+          renderGallery();
+        }
+        setTimeout(() => statusText.textContent = '', 2000);
+      }
+      uploadBtn.disabled = false;
+    });
+
+    // Fetch All Data in Parallel
+    async function loadGalleryData() {
+      photoGrid.innerHTML = '<p class="col-span-full text-center text-gray-400 py-12">Loading gallery...</p>';
+
+      const [photosRes, likesRes, commentsRes] = await Promise.all([
+        supabaseClient.from('photos').select('*').order('created_at', { ascending: false }),
+        supabaseClient.from('likes').select('photo_id, user_id'),
+        supabaseClient.from('comments').select('*').order('created_at', { ascending: true })
+      ]);
+
+      if (photosRes.error) {
+        photoGrid.innerHTML = `<p class="col-span-full text-center text-red-500">Error: ${photosRes.error.message}</p>`;
+        return;
+      }
+
+      const allLikes = likesRes.data || [];
+      const allComments = commentsRes.data || [];
+
+      photosData = (photosRes.data || []).map(photo => ({
+        ...photo,
+        likes: allLikes.filter(l => l.photo_id === photo.id).map(l => l.user_id),
+        comments: allComments.filter(c => c.photo_id === photo.id)
+      }));
+
+      renderGallery();
+    }
+
+    // REAL-TIME SUBSCRIPTIONS (No gallery reload on like/unlike)
+    function setupRealtime() {
+      if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
+
+      realtimeChannel = supabaseClient
+        .channel('snapwall-live')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'photos' }, payload => {
+          if (!photosData.some(p => p.id === payload.new.id)) {
+            photosData.unshift({ ...payload.new, likes: [], comments: [] });
+            renderGallery();
+          }
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'photos' }, payload => {
+          const idx = photosData.findIndex(p => p.id === payload.new.id);
+          if (idx !== -1) {
+            photosData[idx] = { ...photosData[idx], ...payload.new };
+            renderGallery();
+          }
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'photos' }, payload => {
+          photosData = photosData.filter(p => p.id !== payload.old.id);
+          renderGallery();
+        })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'likes' }, payload => {
+          const photo = photosData.find(p => p.id === payload.new.photo_id);
+          if (photo && !photo.likes.includes(payload.new.user_id)) {
+            photo.likes.push(payload.new.user_id);
+            updateLikeButtonDOM(photo);
+          }
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'likes' }, payload => {
+          if (payload.old && payload.old.photo_id) {
+            const photo = photosData.find(p => p.id === payload.old.photo_id);
+            if (photo) {
+              photo.likes = photo.likes.filter(uid => uid !== payload.old.user_id);
+              updateLikeButtonDOM(photo);
+            }
+          }
+        })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, payload => {
+          const photo = photosData.find(p => p.id === payload.new.photo_id);
+          if (photo && !photo.comments.some(c => c.id === payload.new.id)) {
+            photo.comments.push(payload.new);
+            renderGallery();
+          }
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'comments' }, payload => {
+          photosData.forEach(p => {
+            p.comments = p.comments.filter(c => c.id !== payload.old.id);
+          });
+          renderGallery();
+        })
+        .subscribe();
+    }
+
+    // Discovery Controls (Search, Category, Sort, My Uploads, Pagination)
+    function handleFilterChange() {
+      visibleLimit = 12;
+      renderGallery();
+    }
+
+    function setCategory(cat, btn) {
+      activeCategory = cat;
+      visibleLimit = 12;
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('ring-2', 'ring-offset-1', 'ring-indigo-500'));
+      btn.classList.add('ring-2', 'ring-offset-1', 'ring-indigo-500');
+      renderGallery();
+    }
+
+    function setSort(sortType, btn) {
+      activeSort = sortType;
+      document.querySelectorAll('.sort-btn').forEach(b => {
+        b.className = 'sort-btn flex-1 md:flex-none px-3.5 py-1.5 rounded-lg text-gray-600 dark:text-gray-300 transition';
+      });
+      btn.className = 'sort-btn flex-1 md:flex-none px-3.5 py-1.5 rounded-lg bg-indigo-600 text-white transition';
+      renderGallery();
+    }
+
+    function toggleMyUploads() {
+      showOnlyMine = !showOnlyMine;
+      visibleLimit = 12;
+      const btn = document.getElementById('my-uploads-btn');
+      btn.className = showOnlyMine
+        ? 'px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white transition'
+        : 'px-3 py-1.5 rounded-xl text-xs font-semibold border border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-700 transition';
+      renderGallery();
+    }
+
+    function loadMorePhotos() {
+      visibleLimit += 12;
+      renderGallery();
+    }
+
+    // Render Filtered, Sorted & Paginated Gallery
+    function renderGallery() {
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+
+      // 1. Filter
+      let filtered = photosData.filter(photo => {
+        const author = (photo.display_name || photo.user_email || '').toLowerCase();
+        const caption = (photo.caption || '').toLowerCase();
+        const matchesSearch = !query || caption.includes(query) || author.includes(query);
+        const matchesCat = activeCategory === 'All' || (photo.category || 'General') === activeCategory;
+        const matchesMine = !showOnlyMine || (currentUser && photo.user_id === currentUser.id);
+        return matchesSearch && matchesCat && matchesMine;
+      });
+
+      // 2. Sort
+      if (activeSort === 'likes') {
+        filtered.sort((a, b) => b.likes.length - a.likes.length);
+      } else if (activeSort === 'comments') {
+        filtered.sort((a, b) => b.comments.length - a.comments.length);
+      } else {
+        filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      }
+
+      // 3. Paginate
+      const loadMoreContainer = document.getElementById('load-more-container');
+      if (filtered.length > visibleLimit) {
+        loadMoreContainer.classList.remove('hidden');
+      } else {
+        loadMoreContainer.classList.add('hidden');
+      }
+      const paginated = filtered.slice(0, visibleLimit);
+
+      if (paginated.length === 0) {
+        photoGrid.innerHTML = '<p class="col-span-full text-center text-gray-400 py-12">No matching photos found.</p>';
+        return;
+      }
+
+      photoGrid.innerHTML = paginated.map(photo => {
+        const isOwner = currentUser && photo.user_id === currentUser.id;
+        const isLiked = currentUser && photo.likes.includes(currentUser.id);
+        const authorName = photo.display_name || (photo.user_email ? photo.user_email.split('@')[0] : 'User');
+        const avatarColor = photo.avatar_color || '#6366f1';
+        const cat = photo.category || 'General';
+        const catStyle = CATEGORY_STYLES[cat] || CATEGORY_STYLES.General;
+
+        const commentsHTML = photo.comments.length === 0
+          ? `<p class="text-xs text-gray-400 italic">No comments yet.</p>`
+          : photo.comments.map(c => {
+              const canDeleteComment = currentUser && c.user_id === currentUser.id;
+              const cName = c.display_name || (c.user_email ? c.user_email.split('@')[0] : 'User');
+              return `
+                <div class="text-xs bg-slate-50 dark:bg-slate-700/60 px-2.5 py-1.5 rounded-lg flex items-start justify-between gap-2">
+                  <div>
+                    <span class="font-semibold" style="color:${c.avatar_color || '#6366f1'}">${escapeHTML(cName)}:</span>
+                    <span class="text-gray-700 dark:text-gray-200">${escapeHTML(c.content)}</span>
+                  </div>
+                  ${canDeleteComment ? `
+                    <button type="button" onclick="deleteComment('${photo.id}', '${c.id}')" title="Delete comment" class="text-gray-400 hover:text-rose-500 text-[11px] shrink-0">✕</button>
+                  ` : ''}
+                </div>
+              `;
+            }).join('');
+
+        return `
+          <div class="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col">
+            <!-- Clickable Image -->
+            <div onclick="openLightbox('${photo.id}')" class="h-60 bg-gray-100 dark:bg-slate-900 overflow-hidden relative cursor-zoom-in group">
+              <img src="${photo.image_url}" alt="${escapeHTML(photo.caption || '')}" 
+                   class="w-full h-full object-cover" loading="lazy" decoding="async" />
+              <span class="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold shadow-sm ${catStyle}">
+                #${escapeHTML(cat)}
+              </span>
+              <span class="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-2.5 right-2.5 bg-black/65 text-white text-[11px] font-medium px-2.5 py-1 rounded-lg pointer-events-none">
+                🔍 Full Screen
+              </span>
+            </div>
+
+            <!-- Card Body -->
+            <div class="p-4 flex-1 flex flex-col justify-between">
+              <div>
+                <!-- Author Header & Owner Controls -->
+                <div class="flex items-center justify-between gap-2 mb-2">
+                  <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style="background:${avatarColor}">
+                      ${escapeHTML(authorName[0].toUpperCase())}
+                    </span>
+                    <div>
+                      <p class="text-xs font-bold leading-none">${escapeHTML(authorName)}</p>
+                      <p class="text-[10px] text-gray-400 mt-0.5">${new Date(photo.created_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+
+                  ${isOwner ? `
+                    <div class="flex items-center gap-1">
+                      <button type="button" onclick="editCaption('${photo.id}')" title="Edit caption" class="p-1.5 rounded-lg text-gray-400 hover:text-indigo-500 hover:bg-gray-100 dark:hover:bg-slate-700 text-xs transition">✏️</button>
+                      <button type="button" onclick="deletePhoto('${photo.id}')" title="Delete photo" class="p-1.5 rounded-lg text-gray-400 hover:text-rose-500 hover:bg-gray-100 dark:hover:bg-slate-700 text-xs transition">🗑️</button>
+                    </div>
+                  ` : ''}
+                </div>
+
+                <!-- Caption -->
+                <p id="caption-text-${photo.id}" class="font-semibold text-sm mb-3 break-words">${escapeHTML(photo.caption || '')}</p>
+              </div>
+
+              <!-- Like & Comment Section -->
+              <div class="pt-3 border-t border-gray-100 dark:border-slate-700">
+                <div class="flex items-center justify-between mb-3">
+                  <button type="button" id="like-btn-${photo.id}" onclick="toggleLike('${photo.id}')"
+                    class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition ${
+                      isLiked ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400' : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 hover:bg-rose-50'
+                    }">
+                    <span>${isLiked ? '❤️' : '🤍'}</span>
+                    <span>${photo.likes.length}</span>
+                  </button>
+                  <span class="text-xs text-gray-400">💬 ${photo.comments.length}</span>
+                </div>
+
+                <!-- Comments List -->
+                <div class="space-y-1.5 max-h-28 overflow-y-auto comment-scroll mb-2.5 pr-1">
+                  ${commentsHTML}
+                </div>
+
+                <!-- Add Comment Form -->
+                ${currentUser ? `
+                  <form onsubmit="addComment(event, '${photo.id}')" class="flex gap-1.5">
+                    <input type="text" id="comment-input-${photo.id}" required placeholder="Write a comment..."
+                      class="flex-1 px-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+                    <button type="submit" class="px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white text-xs font-semibold rounded-xl transition">
+                      Post
+                    </button>
+                  </form>
+                ` : `
+                  <p class="text-[11px] text-center text-gray-400 bg-gray-50 dark:bg-slate-700/40 py-1.5 rounded-lg">
+                    Log in to like or comment
+                  </p>
+                `}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // OWNER ACTIONS: Edit Caption & Delete Photo
+    async function editCaption(photoId) {
+      const photo = photosData.find(p => p.id === photoId);
+      if (!photo) return;
+
+      const updated = prompt('Edit your caption:', photo.caption || '');
+      if (updated === null || updated.trim() === '' || updated.trim() === photo.caption) return;
+
+      photo.caption = updated.trim();
+      renderGallery();
+
+      const { error } = await supabaseClient
+        .from('photos')
+        .update({ caption: photo.caption })
+        .eq('id', photoId);
+
+      if (error) alert(`Could not update caption: ${error.message}`);
+    }
+
+    async function deletePhoto(photoId) {
+      if (!confirm('Delete this photo permanently?')) return;
+
+      const photo = photosData.find(p => p.id === photoId);
+      photosData = photosData.filter(p => p.id !== photoId);
+      renderGallery();
+
+      const { error } = await supabaseClient.from('photos').delete().eq('id', photoId);
+      if (error) {
+        alert(`Delete failed: ${error.message}`);
+        loadGalleryData();
+        return;
+      }
+
+      if (photo && photo.image_url) {
+        const fileName = photo.image_url.split('/').pop();
+        await supabaseClient.storage.from('photos').remove([fileName]);
+      }
+    }
+
+    // TARGETED DOM UPDATE FOR LIKE BUTTON (Zero gallery reload or flicker)
+    function updateLikeButtonDOM(photo) {
+      const btn = document.getElementById(`like-btn-${photo.id}`);
+      if (!btn) return;
+
+      const isLiked = currentUser && photo.likes.includes(currentUser.id);
+      btn.className = `flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition ${
+        isLiked
+          ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400'
+          : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 hover:bg-rose-50'
+      }`;
+      btn.innerHTML = `
+        <span class="animate-pop">${isLiked ? '❤️' : '🤍'}</span>
+        <span>${photo.likes.length}</span>
+      `;
+    }
+
+    // INSTANT LIKE / UNLIKE TOGGLE
+    async function toggleLike(photoId) {
+      if (!currentUser) return alert('Please log in to like photos!');
+
+      const photo = photosData.find(p => p.id === photoId);
+      if (!photo) return;
+
+      const userIndex = photo.likes.indexOf(currentUser.id);
+      const isLiked = userIndex !== -1;
+
+      if (isLiked) photo.likes.splice(userIndex, 1);
+      else photo.likes.push(currentUser.id);
+
+      updateLikeButtonDOM(photo);
+
+      if (isLiked) {
+        await supabaseClient.from('likes').delete().match({ photo_id: photoId, user_id: currentUser.id });
+      } else {
+        await supabaseClient.from('likes').insert([{ photo_id: photoId, user_id: currentUser.id }]);
+      }
+    }
+
+    // Add & Delete Comment
+    async function addComment(e, photoId) {
+      e.preventDefault();
+      if (!currentUser) return;
+
+      const input = document.getElementById(`comment-input-${photoId}`);
+      const content = input.value.trim();
+      if (!content) return;
+      input.value = '';
+
+      const profile = getUserProfile(currentUser);
+      const { data, error } = await supabaseClient
+        .from('comments')
+        .insert([{
+          photo_id: photoId,
+          user_id: currentUser.id,
+          user_email: currentUser.email,
+          display_name: profile.name,
+          avatar_color: profile.color,
+          content
+        }])
+        .select()
+        .single();
+
+      if (!error && data) {
+        const photo = photosData.find(p => p.id === photoId);
+        if (photo && !photo.comments.some(c => c.id === data.id)) {
+          photo.comments.push(data);
+          renderGallery();
+        }
+      }
+    }
+
+    async function deleteComment(photoId, commentId) {
+      const photo = photosData.find(p => p.id === photoId);
+      if (photo) {
+        photo.comments = photo.comments.filter(c => c.id !== commentId);
+        renderGallery();
+      }
+      await supabaseClient.from('comments').delete().eq('id', commentId);
+    }
+
+    // Full-Screen Lightbox & Download
+    function openLightbox(photoId) {
+      const photo = photosData.find(p => p.id === photoId);
+      if (!photo) return;
+      activeLightboxPhoto = photo;
+
+      document.getElementById('lightbox-img').src = photo.image_url;
+      document.getElementById('lightbox-caption').textContent = photo.caption || '';
+      const author = photo.display_name || (photo.user_email ? photo.user_email.split('@')[0] : 'User');
+      document.getElementById('lightbox-author').textContent = `Shared by ${author} • #${photo.category || 'General'} • ${new Date(photo.created_at).toLocaleDateString()}`;
+
+      document.getElementById('lightbox').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.add('hidden');
+      document.getElementById('lightbox-img').src = '';
+      document.body.style.overflow = '';
+      activeLightboxPhoto = null;
+    }
+
+    async function downloadCurrentPhoto() {
+      if (!activeLightboxPhoto) return;
+      try {
+        const response = await fetch(activeLightboxPhoto.image_url);
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `snapwall-${activeLightboxPhoto.id.slice(0, 8)}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        window.open(activeLightboxPhoto.image_url, '_blank');
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !document.getElementById('lightbox').classList.contains('hidden')) {
+        closeLightbox();
+      }
+    });
+
+    function escapeHTML(str) {
+      return String(str).replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      }[tag]));
+    }
+
+    initApp();
+  </script>
+</body>
+</html>
